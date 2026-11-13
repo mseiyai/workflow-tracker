@@ -34,3 +34,17 @@ From the project root:
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+## List tasks
+
+List all tasks:
+
+```sh
+python3 -m backend.tasks
+```
+
+List tasks with a specific status:
+
+```sh
+python3 -m backend.tasks --status pending
+```

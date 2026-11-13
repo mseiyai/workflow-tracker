@@ -28,3 +28,14 @@ Run from the repository root:
 
 Report actual commands, results, and any checks not run.
 Zero discovered tests does not count as successful verification.
+
+## Issue-driven development
+- Work on one explicitly named issue at a time.
+- Confirm the current branch and Git status before editing.
+- For behavior changes, first add or update a focused test.
+- Observe the expected test failure before implementing the behavior.
+- Implement the smallest change that satisfies the issue.
+- Run the focused tests, then the complete test suite.
+- Review the complete diff against the acceptance criteria.
+- Do not mark an issue verified without recording observed evidence.
+- Do not commit, push, merge, or deploy unless explicitly requested.
