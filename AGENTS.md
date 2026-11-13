@@ -39,3 +39,17 @@ Zero discovered tests does not count as successful verification.
 - Review the complete diff against the acceptance criteria.
 - Do not mark an issue verified without recording observed evidence.
 - Do not commit, push, merge, or deploy unless explicitly requested.
+
+## Python dependencies
+
+- Python code must support Python 3.10 or newer.
+- Use the repository `.venv` for Python commands.
+- Record runtime and test dependencies in `requirements.txt`.
+- Add dependencies only when approved by the current issue.
+- FastAPI and HTTPX are approved for Issue 004.
+
+## API verification
+
+- Run focused API tests before the complete test suite.
+- API endpoints must reuse business logic from existing modules.
+- Read-only API work must not modify `data/tasks.json`.
