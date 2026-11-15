@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -21,5 +22,13 @@ def create_database_engine(database_url: str | None = None) -> Engine:
     return create_engine(url)
 
 
-def create_session_factory(engine: Engine) -> sessionmaker[Session]:
+SessionFactory = sessionmaker[Session]
+
+
+def create_session_factory(engine: Engine) -> SessionFactory:
     return sessionmaker(bind=engine, expire_on_commit=False)
+
+
+@lru_cache
+def get_session_factory() -> SessionFactory:
+    return create_session_factory(create_database_engine())

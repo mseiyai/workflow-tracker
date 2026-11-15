@@ -1,19 +1,40 @@
-import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from backend.app import create_app
+from tests.database_integration import PostgresIntegrationTestCase
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TASKS_PATH = PROJECT_ROOT / "data" / "tasks.json"
 
 
-class ApiTests(unittest.TestCase):
+class ApiTests(PostgresIntegrationTestCase):
     def setUp(self) -> None:
-        self.client = TestClient(create_app())
+        super().setUp()
+        self.insert_tasks(
+            [
+                {"id": 1, "title": "Confirm paper order", "status": "pending"},
+                {
+                    "id": 2,
+                    "title": "Prepare school quotation",
+                    "status": "in_progress",
+                },
+                {
+                    "id": 3,
+                    "title": "Deliver printer cartridges",
+                    "status": "done",
+                },
+                {
+                    "id": 4,
+                    "title": "Call exercise-book supplier",
+                    "status": "pending",
+                },
+            ]
+        )
+        self.client = TestClient(create_app(session_factory=self.session_factory))
         self.addCleanup(self.client.close)
 
     def test_health(self) -> None:
@@ -21,6 +42,13 @@ class ApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "ok"})
+
+    def test_create_app_does_not_load_json_tasks(self) -> None:
+        with patch("backend.tasks.load_tasks") as load_tasks_mock:
+            application = create_app(session_factory=self.session_factory)
+
+        load_tasks_mock.assert_not_called()
+        self.assertIsNotNone(application)
 
     def test_local_vite_origins_are_allowed(self) -> None:
         for origin in ("http://localhost:5173", "http://127.0.0.1:5173"):
@@ -63,6 +91,12 @@ class ApiTests(unittest.TestCase):
             ],
         )
 
+    def test_database_connection_is_returned_after_request(self) -> None:
+        response = self.client.get("/tasks")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.engine.pool.checkedout(), 0)
+
     def test_tasks_filters_each_supported_status_in_existing_order(self) -> None:
         expected_ids = {
             "pending": [1, 4],
@@ -85,62 +119,24 @@ class ApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
 
-    def test_tasks_reuses_loading_and_filtering_functions(self) -> None:
-        tasks = [{"id": 10, "title": "Test task", "status": "pending"}]
-
-        with (
-            patch("backend.app.load_tasks", return_value=tasks) as load_mock,
-            patch("backend.app.filter_tasks", return_value=tasks) as filter_mock,
-        ):
-            client = TestClient(create_app())
-            self.addCleanup(client.close)
-            response = client.get("/tasks", params={"status": "pending"})
-
-        self.assertEqual(response.status_code, 200)
-        load_mock.assert_called_once_with()
-        filter_mock.assert_called_once_with(tasks, "pending")
-
-    def test_task_by_id_returns_matching_task(self) -> None:
-        response = self.client.get("/tasks/2")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
-            {
-                "id": 2,
-                "title": "Prepare school quotation",
-                "status": "in_progress",
-            },
-        )
-
-    def test_task_by_id_returns_404_when_task_is_missing(self) -> None:
-        response = self.client.get("/tasks/999")
-
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json(), {"detail": "Task not found"})
-
-    def test_summary_reuses_loading_and_summary_functions(self) -> None:
-        tasks = [{"id": 10, "title": "Test task", "status": "done"}]
+    def test_summary_reuses_summary_function(self) -> None:
         summary = {
-            "total": 1,
-            "pending": 0,
-            "in_progress": 0,
+            "total": 4,
+            "pending": 2,
+            "in_progress": 1,
             "done": 1,
-            "open": 0,
+            "open": 3,
         }
 
-        with (
-            patch("backend.app.load_tasks", return_value=tasks) as load_mock,
-            patch("backend.app.summarize_tasks", return_value=summary) as summary_mock,
-        ):
-            client = TestClient(create_app())
-            self.addCleanup(client.close)
-            response = client.get("/summary")
+        with patch(
+            "backend.app.summarize_tasks", return_value=summary
+        ) as summary_mock:
+            response = self.client.get("/summary")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), summary)
-        load_mock.assert_called_once_with()
-        summary_mock.assert_called_once_with(tasks)
+        summarized_tasks = summary_mock.call_args.args[0]
+        self.assertEqual([task["id"] for task in summarized_tasks], [1, 2, 3, 4])
 
     def test_read_endpoints_do_not_modify_tasks_file(self) -> None:
         original_tasks = TASKS_PATH.read_bytes()

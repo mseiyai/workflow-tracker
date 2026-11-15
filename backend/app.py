@@ -1,19 +1,21 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from collections.abc import Iterator
 
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+
+from backend.database import SessionFactory, get_session_factory
 from backend.models import (
     CreateTaskRequest,
     TaskResponse,
     TaskStatus,
     UpdateTaskStatusRequest,
 )
-from backend.store import TaskStore
+from backend.repository import TaskRepository
 from backend.summary import summarize_tasks
-from backend.tasks import filter_tasks, load_tasks
 
 
-def create_app(initial_tasks: list[dict] | None = None) -> FastAPI:
-    task_store = TaskStore(load_tasks() if initial_tasks is None else initial_tasks)
+def create_app(session_factory: SessionFactory | None = None) -> FastAPI:
     application = FastAPI(title="Workflow Tracker")
     application.add_middleware(
         CORSMiddleware,
@@ -21,25 +23,41 @@ def create_app(initial_tasks: list[dict] | None = None) -> FastAPI:
         allow_methods=["GET", "POST", "PATCH"],
     )
 
+    def get_session() -> Iterator[Session]:
+        factory = session_factory or get_session_factory()
+        with factory() as session:
+            yield session
+
     @application.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
     @application.get("/tasks", response_model=list[TaskResponse])
-    def tasks(status: TaskStatus | None = None) -> list[dict]:
-        return filter_tasks(task_store.list_tasks(), status)
+    def tasks(
+        status: TaskStatus | None = None,
+        session: Session = Depends(get_session),
+    ) -> list[dict]:
+        return TaskRepository(session).list_tasks(status)
 
     @application.post(
         "/tasks",
         response_model=TaskResponse,
         status_code=201,
     )
-    def create_task(request: CreateTaskRequest) -> dict:
-        return task_store.create_task(request.title)
+    def create_task(
+        request: CreateTaskRequest,
+        session: Session = Depends(get_session),
+    ) -> dict:
+        task = TaskRepository(session).create_task(request.title)
+        session.commit()
+        return task
 
     @application.get("/tasks/{task_id}", response_model=TaskResponse)
-    def task(task_id: int) -> dict:
-        existing_task = task_store.get_task(task_id)
+    def task(
+        task_id: int,
+        session: Session = Depends(get_session),
+    ) -> dict:
+        existing_task = TaskRepository(session).get(task_id)
         if existing_task is not None:
             return existing_task
 
@@ -52,16 +70,21 @@ def create_app(initial_tasks: list[dict] | None = None) -> FastAPI:
     def update_task_status(
         task_id: int,
         request: UpdateTaskStatusRequest,
+        session: Session = Depends(get_session),
     ) -> dict:
-        updated_task = task_store.update_task_status(task_id, request.status)
+        updated_task = TaskRepository(session).update_task_status(
+            task_id,
+            request.status,
+        )
         if updated_task is not None:
+            session.commit()
             return updated_task
 
         raise HTTPException(status_code=404, detail="Task not found")
 
     @application.get("/summary")
-    def summary() -> dict[str, int]:
-        return summarize_tasks(task_store.list_tasks())
+    def summary(session: Session = Depends(get_session)) -> dict[str, int]:
+        return summarize_tasks(TaskRepository(session).list_tasks())
 
     return application
 

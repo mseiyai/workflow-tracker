@@ -2,10 +2,10 @@
 
 A small-business application for tracking orders, quotations, and deliveries.
 
-Current lesson: create tasks and update their status through the API.
+Current lesson: persist the task API in PostgreSQL.
 
 Product requirements: docs/product.md
-Current issue: issues/006-task-write-api.md
+Current issue: issues/008-api-postgresql.md
 
 Planned stack: React/TypeScript, FastAPI, PostgreSQL.
 
@@ -47,9 +47,22 @@ curl -X PATCH http://127.0.0.1:8001/tasks/1/status \
   -d '{"status":"done"}'
 ```
 
-API writes are held in memory and are visible to the task and summary
-endpoints. They are not written to `data/tasks.json`, and restarting the API
-resets the tasks to the JSON file's contents.
+The API stores tasks in PostgreSQL using the connection in `DATABASE_URL`.
+Apply the Alembic migrations before starting the API:
+
+```sh
+alembic upgrade head
+```
+
+To import the example tasks into an empty database, run:
+
+```sh
+python3 -m backend.seed
+```
+
+API writes are committed to PostgreSQL and survive application restarts.
+`data/tasks.json` is used only by the optional seed command and the standalone
+task-summary scripts; normal API startup does not load it.
 
 ## Run the frontend
 
@@ -93,11 +106,16 @@ Open: 3
 
 ## Run the tests
 
-From the project root:
+Create a separate PostgreSQL database whose name ends in `_test`, apply the
+migrations, and run the suite from the project root:
 
 ```sh
-python3 -m unittest discover -s tests -v
+TEST_DATABASE_URL=postgresql+psycopg:///workflow_tracker_test \
+  python3 -m unittest discover -s tests -v
 ```
+
+The integration tests refuse to reset rows unless the parsed database name
+ends in `_test`.
 
 ## List tasks
 

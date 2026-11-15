@@ -1,23 +1,27 @@
-import unittest
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 import backend.app as app_module
+from tests.database_integration import PostgresIntegrationTestCase
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TASKS_PATH = PROJECT_ROOT / "data" / "tasks.json"
 
 
-class ApiWriteTests(unittest.TestCase):
+class ApiWriteTests(PostgresIntegrationTestCase):
     def setUp(self) -> None:
+        super().setUp()
         initial_tasks = [
             {"id": 1, "title": "First task", "status": "pending"},
             {"id": 2, "title": "Second task", "status": "in_progress"},
             {"id": 3, "title": "Third task", "status": "done"},
         ]
-        self.client = TestClient(app_module.create_app(initial_tasks))
+        self.insert_tasks(initial_tasks)
+        self.client = TestClient(
+            app_module.create_app(session_factory=self.session_factory)
+        )
         self.addCleanup(self.client.close)
 
     def test_create_task_returns_created_task_and_updates_reads(self) -> None:
@@ -42,6 +46,18 @@ class ApiWriteTests(unittest.TestCase):
                 "open": 3,
             },
         )
+
+    def test_created_task_is_visible_through_a_new_app_instance(self) -> None:
+        response = self.client.post("/tasks", json={"title": "Persistent task"})
+        task = response.json()
+
+        second_client = TestClient(
+            app_module.create_app(session_factory=self.session_factory)
+        )
+        self.addCleanup(second_client.close)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(second_client.get(f"/tasks/{task['id']}").json(), task)
 
     def test_create_task_rejects_blank_title(self) -> None:
         response = self.client.post("/tasks", json={"title": "   "})

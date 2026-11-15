@@ -51,6 +51,18 @@ class DatabaseModelTests(unittest.TestCase):
             )
         )
 
+    def test_integration_database_requires_test_suffix(self) -> None:
+        from tests.database_integration import require_test_database_url
+
+        unsafe_url = "postgresql+psycopg:///workflow_tracker"
+        with patch.dict(
+            os.environ,
+            {"TEST_DATABASE_URL": unsafe_url},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "end with '_test'"):
+                require_test_database_url()
+
 
 if __name__ == "__main__":
     unittest.main()

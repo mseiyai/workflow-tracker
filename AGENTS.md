@@ -72,3 +72,12 @@ Zero discovered tests does not count as successful verification.
 - Do not call `Base.metadata.create_all()` during application startup.
 - Do not run destructive migrations without explicit approval and a backup plan.
 - Seed commands must be safe to run more than once.
+
+## Database-backed API
+
+- Keep SQLAlchemy queries in repository classes, not route functions.
+- Use one SQLAlchemy Session per HTTP request.
+- Application code must not connect to the test database by default.
+- Integration tests must refuse to clean a database whose name does not end in `_test`.
+- Apply Alembic migrations instead of creating tables directly in tests.
+- Preserve API contracts when replacing a storage implementation.
