@@ -53,3 +53,13 @@ Zero discovered tests does not count as successful verification.
 - Run focused API tests before the complete test suite.
 - API endpoints must reuse business logic from existing modules.
 - Read-only API work must not modify `data/tasks.json`.
+
+## Frontend
+
+- React and TypeScript source belongs under frontend/src/.
+- Avoid `any`; define types for API request and response data.
+- Keep HTTP requests outside presentation components.
+- Every remote-data view must account for loading, error, empty, and success states.
+- Do not hard-code task records or summary counts.
+- Run `npm run build` after frontend changes.
+- Do not add frontend dependencies unless the current issue requires them.

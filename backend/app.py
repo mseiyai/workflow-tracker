@@ -1,6 +1,7 @@
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.summary import summarize_tasks
 from backend.tasks import filter_tasks, load_tasks
@@ -9,6 +10,10 @@ from backend.tasks import filter_tasks, load_tasks
 TaskStatus = Literal["pending", "in_progress", "done"]
 
 app = FastAPI(title="Workflow Tracker")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+)
 
 
 @app.get("/health")

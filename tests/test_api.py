@@ -21,6 +21,21 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "ok"})
 
+    def test_local_vite_origins_are_allowed(self) -> None:
+        for origin in ("http://localhost:5173", "http://127.0.0.1:5173"):
+            with self.subTest(origin=origin):
+                response = self.client.get("/health", headers={"Origin": origin})
+
+                self.assertEqual(response.headers["access-control-allow-origin"], origin)
+
+    def test_other_origins_are_not_allowed(self) -> None:
+        response = self.client.get(
+            "/health",
+            headers={"Origin": "https://example.com"},
+        )
+
+        self.assertNotIn("access-control-allow-origin", response.headers)
+
     def test_tasks_returns_all_tasks_in_existing_order(self) -> None:
         response = self.client.get("/tasks")
 
