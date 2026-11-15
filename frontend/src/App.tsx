@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { fetchSummary, fetchTasks } from './api'
+import { useEffect, useState, type FormEvent } from 'react'
+import { createTask, fetchSummary, fetchTasks } from './api'
 import type { Task, TaskFilter, TaskStatus, TaskSummary } from './types'
 import './App.css'
 
@@ -136,6 +136,10 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedFilter, setSelectedFilter] = useState<TaskFilter>('all')
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [refreshVersion, setRefreshVersion] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -174,7 +178,32 @@ function App() {
     void loadDashboard()
 
     return () => controller.abort()
-  }, [selectedFilter])
+  }, [selectedFilter, refreshVersion])
+
+  async function handleCreateTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (creating || !newTaskTitle.trim()) {
+      return
+    }
+
+    setCreating(true)
+    setCreateError(null)
+
+    try {
+      await createTask(newTaskTitle)
+      setNewTaskTitle('')
+      setRefreshVersion((version) => version + 1)
+    } catch (requestError: unknown) {
+      setCreateError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'An unexpected error occurred',
+      )
+    } finally {
+      setCreating(false)
+    }
+  }
 
   return (
     <div className="app-shell">
@@ -192,6 +221,55 @@ function App() {
       </header>
 
       <main>
+        <section
+          className="create-task-section"
+          aria-labelledby="create-task-heading"
+        >
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Add work</p>
+              <h2 id="create-task-heading">Create a task</h2>
+            </div>
+            <p>New tasks start as pending</p>
+          </div>
+
+          <form className="create-task-form" onSubmit={handleCreateTask}>
+            <div className="create-task-field">
+              <label htmlFor="new-task-title">Task title</label>
+              <input
+                id="new-task-title"
+                name="title"
+                type="text"
+                value={newTaskTitle}
+                onChange={(event) => setNewTaskTitle(event.target.value)}
+                aria-describedby={
+                  createError
+                    ? 'new-task-help new-task-error'
+                    : 'new-task-help'
+                }
+                aria-invalid={createError ? true : undefined}
+                required
+              />
+              <span id="new-task-help" className="field-help">
+                Describe the order, quotation, or delivery.
+              </span>
+            </div>
+            <button
+              className="create-task-button"
+              type="submit"
+              disabled={creating || !newTaskTitle.trim()}
+            >
+              {creating ? 'Creating…' : 'Create task'}
+            </button>
+          </form>
+
+          {createError && (
+            <p id="new-task-error" className="form-error" role="alert">
+              {createError}
+            </p>
+          )}
+        </section>
+
         {loading && (
           <div className="state-panel" aria-live="polite">
             <div className="loading-indicator" aria-hidden="true" />

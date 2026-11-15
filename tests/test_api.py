@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.app import app
+from backend.app import create_app
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -13,7 +13,8 @@ TASKS_PATH = PROJECT_ROOT / "data" / "tasks.json"
 
 class ApiTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.client = TestClient(app)
+        self.client = TestClient(create_app())
+        self.addCleanup(self.client.close)
 
     def test_health(self) -> None:
         response = self.client.get("/health")
@@ -91,7 +92,9 @@ class ApiTests(unittest.TestCase):
             patch("backend.app.load_tasks", return_value=tasks) as load_mock,
             patch("backend.app.filter_tasks", return_value=tasks) as filter_mock,
         ):
-            response = self.client.get("/tasks", params={"status": "pending"})
+            client = TestClient(create_app())
+            self.addCleanup(client.close)
+            response = client.get("/tasks", params={"status": "pending"})
 
         self.assertEqual(response.status_code, 200)
         load_mock.assert_called_once_with()
@@ -130,7 +133,9 @@ class ApiTests(unittest.TestCase):
             patch("backend.app.load_tasks", return_value=tasks) as load_mock,
             patch("backend.app.summarize_tasks", return_value=summary) as summary_mock,
         ):
-            response = self.client.get("/summary")
+            client = TestClient(create_app())
+            self.addCleanup(client.close)
+            response = client.get("/summary")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), summary)

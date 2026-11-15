@@ -2,10 +2,10 @@
 
 A small-business application for tracking orders, quotations, and deliveries.
 
-Current lesson: display workflow data in a React dashboard.
+Current lesson: create tasks and update their status through the API.
 
 Product requirements: docs/product.md
-Current issue: issues/005-react-dashboard.md
+Current issue: issues/006-task-write-api.md
 
 Planned stack: React/TypeScript, FastAPI, PostgreSQL.
 
@@ -30,6 +30,26 @@ fastapi dev backend/app.py --port 8001
 
 The API is available at `http://127.0.0.1:8001`. Open
 `http://127.0.0.1:8001/docs` for the interactive API documentation.
+
+Create a task:
+
+```sh
+curl -X POST http://127.0.0.1:8001/tasks \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Prepare customer invoice"}'
+```
+
+Update a task's status:
+
+```sh
+curl -X PATCH http://127.0.0.1:8001/tasks/1/status \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"done"}'
+```
+
+API writes are held in memory and are visible to the task and summary
+endpoints. They are not written to `data/tasks.json`, and restarting the API
+resets the tasks to the JSON file's contents.
 
 ## Run the frontend
 
@@ -64,11 +84,11 @@ python3 backend/summary.py
 Example output:
 
 ```text
-Total: 3
-Pending: 1
+Total: 4
+Pending: 2
 In progress: 1
 Done: 1
-Open: 2
+Open: 3
 ```
 
 ## Run the tests
