@@ -94,3 +94,25 @@ Zero discovered tests does not count as successful verification.
   deletes the project’s named volumes and database contents.
 - Run docker compose config, image build, health, migration, and persistence
   checks after container changes.
+
+
+## Continuous integration
+
+- Pull requests must pass backend tests, database migration checks, and the
+  frontend production build.
+- CI databases must be temporary test databases. Never connect CI to staging
+  or production databases.
+- Keep GitHub Actions permissions read-only unless an issue explicitly
+  requires additional permissions.
+- Use `npm ci`, not `npm install`, in CI.
+- Keep deterministic checks in CI even when Codex also performs a review.
+
+## Code review rules
+
+Treat these as blocking findings:
+
+- Production credentials or database URLs in code or workflow files
+- Deployment or image publishing triggered by an untrusted pull request
+- Model changes without an Alembic migration
+- Tests that silently skip when PostgreSQL is unavailable
+- Broad GitHub Actions write permissions without a documented need
