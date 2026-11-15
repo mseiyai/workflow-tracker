@@ -2,10 +2,10 @@
 
 A small-business application for tracking orders, quotations, and deliveries.
 
-Current lesson: persist the task API in PostgreSQL.
+Current lesson: run the API and PostgreSQL with Docker Compose.
 
 Product requirements: docs/product.md
-Current issue: issues/008-api-postgresql.md
+Current issue: issues/009-docker-compose.md
 
 Planned stack: React/TypeScript, FastAPI, PostgreSQL.
 
@@ -63,6 +63,63 @@ python3 -m backend.seed
 API writes are committed to PostgreSQL and survive application restarts.
 `data/tasks.json` is used only by the optional seed command and the standalone
 task-summary scripts; normal API startup does not load it.
+
+## Run with Docker Compose
+
+Copy the example environment file and replace the placeholder with a
+URL-safe database password:
+
+```sh
+cp .env.example .env
+```
+
+Build and start the API and PostgreSQL:
+
+```sh
+docker compose up --build -d
+```
+
+The API is available at `http://127.0.0.1:8001`. PostgreSQL is available only
+to other Compose services and is not published to the host. The API container
+waits for PostgreSQL to become healthy and applies Alembic migrations before
+starting FastAPI.
+
+Check service state and follow API logs:
+
+```sh
+docker compose ps
+docker compose logs --follow api
+```
+
+Open a shell in the API container:
+
+```sh
+docker compose exec api sh
+```
+
+Run the optional one-shot seed service. The command applies migrations first,
+imports the example tasks only when the table is empty, and then exits:
+
+```sh
+docker compose --profile tools run --rm seed
+```
+
+Verify the API and current migration revision:
+
+```sh
+curl --fail http://127.0.0.1:8001/health
+docker compose exec api alembic current
+```
+
+Stop and remove the containers and network while preserving the named database
+volume:
+
+```sh
+docker compose down
+```
+
+Do not add `-v` to the stop command; that would delete the database volume and
+its persisted tasks.
 
 ## Run the frontend
 

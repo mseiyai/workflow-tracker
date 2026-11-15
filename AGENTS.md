@@ -81,3 +81,16 @@ Zero discovered tests does not count as successful verification.
 - Integration tests must refuse to clean a database whose name does not end in `_test`.
 - Apply Alembic migrations instead of creating tables directly in tests.
 - Preserve API contracts when replacing a storage implementation.
+
+## Containers
+
+- Keep container configuration reproducible and free of committed secrets.
+- Run application processes as a non-root user.
+- Use Compose health checks for readiness-dependent services.
+- Apply Alembic migrations before starting the API.
+- Use service names, not localhost, for communication between containers.
+- Preserve PostgreSQL with a named volume.
+- Never run `docker compose down -v` without explicit approval because it
+  deletes the project’s named volumes and database contents.
+- Run docker compose config, image build, health, migration, and persistence
+  checks after container changes.
