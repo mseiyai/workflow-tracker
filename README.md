@@ -2,10 +2,10 @@
 
 A small-business application for tracking orders, quotations, and deliveries.
 
-Current lesson: run the API and PostgreSQL with Docker Compose.
+Current lesson: recover CI and harden configuration.
 
 Product requirements: docs/product.md
-Current issue: issues/009-docker-compose.md
+Current issue: issues/010b-ci-recovery.md
 
 Planned stack: React/TypeScript, FastAPI, PostgreSQL.
 
@@ -14,7 +14,7 @@ Planned stack: React/TypeScript, FastAPI, PostgreSQL.
 Create and activate a virtual environment, then install the dependencies:
 
 ```sh
-python3 -m venv .venv
+python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
@@ -167,8 +167,9 @@ Create a separate PostgreSQL database whose name ends in `_test`, apply the
 migrations, and run the suite from the project root:
 
 ```sh
+DATABASE_URL=postgresql+psycopg:///workflow_tracker_test \
 TEST_DATABASE_URL=postgresql+psycopg:///workflow_tracker_test \
-  python3 -m unittest discover -s tests -v
+  python -m unittest discover -s tests -v
 ```
 
 The integration tests refuse to reset rows unless the parsed database name

@@ -42,7 +42,7 @@ Zero discovered tests does not count as successful verification.
 
 ## Python dependencies
 
-- Python code must support Python 3.10 or newer.
+- Python code must support Python 3.13 or newer.
 - Use the repository `.venv` for Python commands.
 - Record runtime and test dependencies in `requirements.txt`.
 - Add dependencies only when approved by the current issue.
@@ -116,3 +116,15 @@ Treat these as blocking findings:
 - Model changes without an Alembic migration
 - Tests that silently skip when PostgreSQL is unavailable
 - Broad GitHub Actions write permissions without a documented need
+
+## Configuration invariants
+
+- Never commit credentials or populated `.env` files.
+- Backend startup, migrations, and tests require an explicit database URL;
+  do not add a hidden SQLite or production-database fallback.
+- CI integration tests must use an isolated database whose name ends in
+  `_test`.
+- The supported project baseline is Python 3.13.
+- Dependency manifests contain intentional application dependencies.
+  Validate them from a clean environment rather than copying an unrelated
+  global environment.
