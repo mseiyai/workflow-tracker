@@ -60,8 +60,26 @@ class DatabaseModelTests(unittest.TestCase):
             {"TEST_DATABASE_URL": unsafe_url},
             clear=True,
         ):
-            with self.assertRaisesRegex(RuntimeError, "end with '_test'"):
+            with self.assertRaisesRegex(RuntimeError, "end in '_test'"):
                 require_test_database_url()
+
+    def test_integration_setup_rejects_database_override_before_migrations(self) -> None:
+        from tests.database_integration import PostgresIntegrationTestCase
+
+        class IntegrationTest(PostgresIntegrationTestCase):
+            pass
+
+        unsafe_url = "postgresql+psycopg:///workflow_tracker_test?dbname=other"
+        with (
+            patch.dict(os.environ, {"TEST_DATABASE_URL": unsafe_url}, clear=True),
+            patch("tests.database_integration.command.upgrade") as upgrade,
+            patch("tests.database_integration.create_database_engine") as engine,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "must not include query options"):
+                IntegrationTest.setUpClass()
+
+        upgrade.assert_not_called()
+        engine.assert_not_called()
 
 
 if __name__ == "__main__":
