@@ -6,25 +6,26 @@ from unittest.mock import patch
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import text
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL
 
 from backend.database import create_database_engine, create_session_factory
 from backend.db_models import Task
+from scripts.check_ci_database import validate_database_url
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def require_test_database_url() -> str:
+def require_safe_test_url(value: str | URL) -> None:
     try:
-        database_url = os.environ["TEST_DATABASE_URL"]
-    except KeyError as error:
-        raise RuntimeError("TEST_DATABASE_URL is not set") from error
+        validate_database_url("TEST_DATABASE_URL", value)
+    except ValueError as error:
+        raise RuntimeError(str(error)) from None
 
-    database_name = make_url(database_url).database
-    if database_name is None or not database_name.endswith("_test"):
-        raise RuntimeError("TEST_DATABASE_URL database name must end with '_test'")
 
+def require_test_database_url() -> str:
+    database_url = os.environ.get("TEST_DATABASE_URL", "")
+    require_safe_test_url(database_url)
     return database_url
 
 
@@ -51,9 +52,7 @@ class PostgresIntegrationTestCase(unittest.TestCase):
         self.reset_tasks()
 
     def reset_tasks(self) -> None:
-        database_name = self.engine.url.database
-        if database_name is None or not database_name.endswith("_test"):
-            raise RuntimeError("Refusing to clean a database without an '_test' suffix")
+        require_safe_test_url(self.engine.url)
 
         with self.engine.begin() as connection:
             connection.execute(text("TRUNCATE TABLE tasks RESTART IDENTITY"))

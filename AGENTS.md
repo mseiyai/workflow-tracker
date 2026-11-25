@@ -42,7 +42,7 @@ Zero discovered tests does not count as successful verification.
 
 ## Python dependencies
 
-- Python code must support Python 3.10 or newer.
+- Python code must support Python 3.13 or newer.
 - Use the repository `.venv` for Python commands.
 - Record runtime and test dependencies in `requirements.txt`.
 - Add dependencies only when approved by the current issue.
@@ -94,3 +94,37 @@ Zero discovered tests does not count as successful verification.
   deletes the project’s named volumes and database contents.
 - Run docker compose config, image build, health, migration, and persistence
   checks after container changes.
+
+
+## Continuous integration
+
+- Pull requests must pass backend tests, database migration checks, and the
+  frontend production build.
+- CI databases must be temporary test databases. Never connect CI to staging
+  or production databases.
+- Keep GitHub Actions permissions read-only unless an issue explicitly
+  requires additional permissions.
+- Use `npm ci`, not `npm install`, in CI.
+- Keep deterministic checks in CI even when Codex also performs a review.
+
+## Code review rules
+
+Treat these as blocking findings:
+
+- Production credentials or database URLs in code or workflow files
+- Deployment or image publishing triggered by an untrusted pull request
+- Model changes without an Alembic migration
+- Tests that silently skip when PostgreSQL is unavailable
+- Broad GitHub Actions write permissions without a documented need
+
+## Configuration invariants
+
+- Never commit credentials or populated `.env` files.
+- Backend startup, migrations, and tests require an explicit database URL;
+  do not add a hidden SQLite or production-database fallback.
+- CI integration tests must use an isolated database whose name ends in
+  `_test`.
+- The supported project baseline is Python 3.13.
+- Dependency manifests contain intentional application dependencies.
+  Validate them from a clean environment rather than copying an unrelated
+  global environment.
