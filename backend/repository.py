@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from backend.db_models import Task
@@ -14,6 +14,14 @@ def task_record(task: Task) -> TaskRecord:
         "title": task.title,
         "status": task.status,
     }
+
+
+class HealthRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def check_connection(self) -> None:
+        self._session.execute(text("SELECT 1"))
 
 
 class TaskRepository:
