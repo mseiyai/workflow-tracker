@@ -2,16 +2,20 @@ from collections.abc import Iterator
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from backend.database import SessionFactory, get_session_factory
+from backend.database import (
+    SessionFactory,
+    get_session_factory,
+)
 from backend.models import (
     CreateTaskRequest,
     TaskResponse,
     TaskStatus,
     UpdateTaskStatusRequest,
 )
-from backend.repository import TaskRepository
+from backend.repository import HealthRepository, TaskRepository
 from backend.summary import summarize_tasks
 
 
@@ -30,6 +34,28 @@ def create_app(session_factory: SessionFactory | None = None) -> FastAPI:
 
     @application.get("/health")
     def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @application.get("/health/live")
+    def health_live() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @application.get("/health/ready")
+    def health_ready() -> dict[str, str]:
+        try:
+            factory = session_factory or get_session_factory()
+        except (ImportError, RuntimeError, SQLAlchemyError, ValueError):
+            raise HTTPException(status_code=503, detail="Service unavailable") from None
+
+        try:
+            with factory() as session:
+                HealthRepository(session).check_connection()
+        except (RuntimeError, SQLAlchemyError):
+            raise HTTPException(
+                status_code=503,
+                detail="Service unavailable",
+            ) from None
+
         return {"status": "ok"}
 
     @application.get("/tasks", response_model=list[TaskResponse])
