@@ -44,6 +44,11 @@ require_command() {
 
 require_command docker
 require_command npm
+require_command python3
+
+section "Check tracked environment files"
+
+python3 scripts/check_tracked_env.py
 
 section "Validate GitHub Actions workflows"
 
@@ -122,23 +127,11 @@ if [[ "$quick_mode" -eq 0 ]]; then
   POSTGRES_PASSWORD=local-ci-only \
     docker compose --file compose.yaml build api
 else
-  section "Skip application image build in quick mode"
+  section "Skip application image build in quick mode (verification is incomplete)"
 fi
 
-section "Checking for tracked environment files..."
-
-tracked_env_files="$(
-  git ls-files | grep -E '(^|/)\.env($|\.)' |
-    grep -Ev '(^|/)\.env\.example$' || true
-)"
-
-if [[ -n "$tracked_env_files" ]]; then
-  echo "ERROR: Tracked environment files detected:"
-  printf '%s\n' "$tracked_env_files"
-  echo "Only .env.example files may be tracked."
-  exit 1
+if [[ "$quick_mode" -eq 0 ]]; then
+  section "Local CI parity checks passed"
+else
+  section "Quick checks passed; complete verification requires the application image build"
 fi
-
-echo "Tracked environment file check passed."
-
-section "Local CI parity checks passed"
